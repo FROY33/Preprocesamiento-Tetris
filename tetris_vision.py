@@ -1,8 +1,24 @@
 import cv2
+import time
 import numpy as np
 
+""" CONSTANTES GLOBALES """
+PIEZAS = {
+    "O": {(0,0),(0,1),(1,0),(1,1)},
+    "I": {(0,0),(0,1),(0,2),(0,3)},
+    "T": {(0,0),(0,1),(0,2),(1,1)},
+    "L": {(0,0),(1,0),(2,0),(2,1)},
+    "J": {(0,1),(1,1),(2,1),(2,0)},
+    "S": {(0,1),(0,2),(1,0),(1,1)},
+    "Z": {(0,0),(0,1),(1,1),(1,2)}
+}
+
+ultimo_movimiento = time.time()
+
+matriz_anterior = np.zeros((20, 10), dtype=np.uint8)
+
 """ FUNCION PARA DETECTAR EL TABLERO Y NORMALIZARLO A 200x400 """
-def detectar_tablero(frame, original):
+def detectar_tablero(frame, frame_umbral):
     # Buscar contornos rectangulares
     contornos, _ = cv2.findContours(frame, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     
@@ -10,22 +26,23 @@ def detectar_tablero(frame, original):
 
     for cnt in contornos:
         area = cv2.contourArea(cnt)
-        if area < 20000 or area > 60000:  # Ignorar contornos muy pequeños o muy grandes
+        if area < 20000 or area > 60000: # Ignorar contornos muy pequeños o muy grandes
             continue
 
         peri = cv2.arcLength(cnt, True)
         approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
 
-        if len(approx) == 4:  # es un cuadrilátero
+        # Solo seleccionar rectangulos
+        if len(approx) == 4:
             x, y, w, h = cv2.boundingRect(approx)
-            aspect = h / w
-            # print(aspect)
-            # El tablero 10×20 tiene aspect ratio ~2.0
-            if 1.8 < aspect < 2.2:
+            aspecto = h / w
+
+            # El tablero 10×20 tiene aspect ratio 2.0
+            if 1.8 < aspecto < 2.2:
                 candidatos.append((area, approx))
                 
     if not candidatos:
-        return None, None, None
+        return None, None
 
     # Tomar el candidato de mayor área
     _, mejor = max(candidatos, key=lambda x: x[0])
@@ -38,19 +55,13 @@ def detectar_tablero(frame, original):
     W, H = 200, 400
     dst = np.float32([[0,0],[W,0],[W,H],[0,H]])
     M = cv2.getPerspectiveTransform(pts, dst)
-    rectificado = cv2.warpPerspective(frame, M, (W, H))
-    tablero_umbral = cv2.warpPerspective(original, M, (W, H))
+    tablero_rectificado = cv2.warpPerspective(frame, M, (W, H))
+    tablero_umbral = cv2.warpPerspective(frame_umbral, M, (W, H))
 
-    return rectificado, M, tablero_umbral
+    return tablero_rectificado, tablero_umbral
 
 """ DEVUELVE LAS ESQUINAS QUE DEFINEN EL CONTORNO DEL TABLERO ORDENADAS """
 def ordenar_esquinas(pts):
-    centro = pts.mean(axis=0)
-    
-    def angulo(p):
-        return np.arctan2(p[1]-centro[1], p[0]-centro[0])
-
-    # arctan2 da orden: BR, TR, TL, BL → reordenar
     tl = min(pts, key=lambda p: p[0]+p[1])
     br = max(pts, key=lambda p: p[0]+p[1])
     tr = max(pts, key=lambda p: p[0]-p[1])
@@ -58,7 +69,9 @@ def ordenar_esquinas(pts):
     
     return np.float32([tl, tr, br, bl])
 
-""" DEVUELVE EL TAMAÑO REAL DE CADA CELDA * revisar si se va a utilizar """
+"""
+
+DEVUELVE EL TAMAÑO REAL DE CADA CELDA * revisar si se va a utilizar
 def inferir_tamano_celda(img_rectificada):
     gris = img_rectificada
 
@@ -78,7 +91,7 @@ def inferir_tamano_celda(img_rectificada):
 
     return int(h_celda), int(w_celda)
 
-""" ENCUENTRA EL PERIODO DE LA GRILLA * revisar si se va a utilizar """
+ENCUENTRA EL PERIODO DE LA GRILLA * revisar si se va a utilizar
 def detectar_periodo(senal):
     senal = senal - senal.mean()
     autocorr = np.correlate(senal, senal, mode='full')
@@ -94,8 +107,10 @@ def detectar_periodo(senal):
     # Período en píxeles
     return picos[0]
 
+"""
+
 """ DEVUELVE LA MATRIZ CON EL ESTADO DEL TABLERO MEDIANTE UN PROMEDIO """
-def matriz_umbral(tablero_umbral, h, w):
+def matriz_umbral(tablero_umbral):
     alto, ancho = tablero_umbral.shape
 
     filas = alto // 20
@@ -121,12 +136,35 @@ def matriz_umbral(tablero_umbral, h, w):
 
     return resultado
 
-""" DEVUELVE EL TIPO DE PIEZA QUE ESTÁ CAYENDO Y SU POSICIÓN ACTUAL """
-def encontrar_pieza():
-    return None, None
+""" DEVUELVE EL TIPO DE PIEZA QUE ESTÁ CAYENDO """
+def determinar_tipo_pieza(pieza):
+    ys, xs = np.where(pieza == 1)
+
+    if len(xs) != 4:
+        return None
+    
+    coords = set(zip(
+        ys - np.min(ys),
+        xs - np.min(xs)
+    ))
+
+    for nombre, patron in PIEZAS.items():
+        if coords == patron:
+            return nombre
+
+    return None
+
+""" DEVUELVE TRUE SI LA PIEZA EN MOVIMIENTO CAYO """
+def pieza_cayo():
+    if time.time() - ultimo_movimiento > 0.5:
+        return True
+    
+    return False
 
 """ CICLO PRINCIPAL """
 cam = cv2.VideoCapture(1)
+
+tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
 
 if not cam.isOpened():
     print("No se pude abrir la camara")
@@ -147,21 +185,32 @@ while True:
     
     # Dilate para que los bordes de pieza se vean como uno solo
     kernel = np.ones((3, 3), np.uint8)
-    frame1 = cv2.dilate(frame1, kernel, iterations = 1)
+    frame1 = cv2.dilate(frame1, kernel, iterations=1)
     
-    tablero, M, tablero_umbral = detectar_tablero(frame1, frame_umbral)
-    hCelda,wCelda = inferir_tamano_celda(tablero)
-    matrizSat = matriz_umbral(tablero_umbral, hCelda, wCelda)
+    tablero, tablero_umbral = detectar_tablero(frame1, frame_umbral)
+    matriz_estado = matriz_umbral(tablero_umbral)
+
+    pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
+
+    if not np.array_equal(matriz_estado, matriz_anterior):
+        ultimo_movimiento = time.time()
+
+    if pieza_cayo():
+        tablero_fijo = matriz_estado.copy()
+    else:
+        print(determinar_tipo_pieza(pieza_activa))
     
+    matriz_anterior = matriz_estado.copy()
+
     # Mostrar imagen
-    cv2.imshow('WebCam Kanny', frame1)  
+    cv2.imshow('WebCam Kanny', frame1)
     
     # Mostrar tablero (si hay)
     if tablero is not None:
         cv2.imshow('Tablero', tablero)
-        cv2.imshow("Tablero umbral", tablero_umbral)
+        cv2.imshow('Tablero umbral', tablero_umbral)
         
-        print(matrizSat,"\n")
+        print(matriz_estado, "\n")
         
     if cv2. waitKey(1) == ord('q'):
         break
