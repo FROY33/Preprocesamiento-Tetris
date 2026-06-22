@@ -1,21 +1,19 @@
 import cv2
-import time
 import numpy as np
 
 """ CONSTANTES GLOBALES """
 PIEZAS = {
     "O": {(0,0),(0,1),(1,0),(1,1)},
     "I": {(0,0),(0,1),(0,2),(0,3)},
-    "T": {(0,0),(0,1),(0,2),(1,1)},
-    "L": {(0,0),(1,0),(2,0),(2,1)},
-    "J": {(0,1),(1,1),(2,1),(2,0)},
+    "T": {(0,1),(1,0),(1,2),(1,1)},
+    "L": {(1,0),(0,2),(1,2),(1,1)},
+    "J": {(1,0),(1,1),(1,2),(0,0)},
     "S": {(0,1),(0,2),(1,0),(1,1)},
     "Z": {(0,0),(0,1),(1,1),(1,2)}
 }
 
-ultimo_movimiento = time.time()
-
 matriz_anterior = np.zeros((20, 10), dtype=np.uint8)
+matriz_estado = np.zeros((20, 10), dtype=np.uint8)
 
 """ FUNCION PARA DETECTAR EL TABLERO Y NORMALIZARLO A 200x400 """
 def detectar_tablero(frame, frame_umbral):
@@ -69,46 +67,6 @@ def ordenar_esquinas(pts):
     
     return np.float32([tl, tr, br, bl])
 
-"""
-
-DEVUELVE EL TAMAÑO REAL DE CADA CELDA * revisar si se va a utilizar
-def inferir_tamano_celda(img_rectificada):
-    gris = img_rectificada
-
-    # Proyección horizontal → detectar filas
-    proj_h = gris.mean(axis=1)
-    # Proyección vertical → detectar columnas
-    proj_v = gris.mean(axis=0)
-
-    h_celda = detectar_periodo(proj_h)
-    w_celda = detectar_periodo(proj_v)
-
-    # Fallback si no se detecta período
-    if h_celda is None:
-        h_celda = img_rectificada.shape[0] // 20
-    if w_celda is None:
-        w_celda = img_rectificada.shape[1] // 10
-
-    return int(h_celda), int(w_celda)
-
-ENCUENTRA EL PERIODO DE LA GRILLA * revisar si se va a utilizar
-def detectar_periodo(senal):
-    senal = senal - senal.mean()
-    autocorr = np.correlate(senal, senal, mode='full')
-    autocorr = autocorr[len(autocorr)//2:]  # Mitad positiva
-
-    # Buscar el primer pico después de lag = 3
-    from scipy.signal import find_peaks
-    picos, _ = find_peaks(autocorr, distance=3)
-
-    if len(picos) == 0:
-        return None
-
-    # Período en píxeles
-    return picos[0]
-
-"""
-
 """ DEVUELVE LA MATRIZ CON EL ESTADO DEL TABLERO MEDIANTE UN PROMEDIO """
 def matriz_umbral(tablero_umbral):
     alto, ancho = tablero_umbral.shape
@@ -155,10 +113,22 @@ def determinar_tipo_pieza(pieza):
     return None
 
 """ DEVUELVE TRUE SI LA PIEZA EN MOVIMIENTO CAYO """
-def pieza_cayo():
-    if time.time() - ultimo_movimiento > 0.5:
-        return True
-    
+def pieza_cayo(pieza_activa, tablero_fijo):
+    ys, xs = np.where(pieza_activa == 1)
+
+    if len(xs) != 4:
+        return False
+
+    for y, x in zip(ys, xs):
+
+        # tocó el fondo
+        if y == 19:
+            return True
+
+        # bloque fijo debajo
+        if tablero_fijo[y + 1, x] == 1:
+            return True
+
     return False
 
 """ CICLO PRINCIPAL """
@@ -188,17 +158,21 @@ while True:
     frame1 = cv2.dilate(frame1, kernel, iterations=1)
     
     tablero, tablero_umbral = detectar_tablero(frame1, frame_umbral)
-    matriz_estado = matriz_umbral(tablero_umbral)
+    
+    if tablero_umbral is not None:
+        matriz_estado = matriz_umbral(tablero_umbral)
 
     pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
 
-    if not np.array_equal(matriz_estado, matriz_anterior):
-        ultimo_movimiento = time.time()
-
-    if pieza_cayo():
+    if pieza_cayo(pieza_activa, tablero_fijo):
         tablero_fijo = matriz_estado.copy()
+        
+        # Decirle al agente que espere una nueva pieza
     else:
         print(determinar_tipo_pieza(pieza_activa))
+        
+        # Mandar al agente tipo de pieza y tablero fijo
+        # Si el agente recibe la misma 5 veces la selecciona
     
     matriz_anterior = matriz_estado.copy()
 
@@ -209,8 +183,6 @@ while True:
     if tablero is not None:
         cv2.imshow('Tablero', tablero)
         cv2.imshow('Tablero umbral', tablero_umbral)
-        
-        print(matriz_estado, "\n")
         
     if cv2. waitKey(1) == ord('q'):
         break
