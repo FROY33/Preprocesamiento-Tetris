@@ -53,17 +53,17 @@ class AgenteTetris:
 
         # Si recibe el mismo tipo de pieza 5 veces la selecciona
         if (self.esperando_pieza):
-            if (tipo_pieza == self.pieza_anterior and tipo_pieza != None):
+            if (tipo_pieza == self.pieza_anterior):
                 self.pieza_anterior = tipo_pieza
                 self.contador += 1
 
                 if (self.contador == 5):
                     self.esperando_pieza = False
                     self.contador_pieza = 0
-            elif (tipo_pieza != None):
-                self.pieza_anterior = tipo_pieza
             else:
-                return None
+                self.pieza_anterior = tipo_pieza
+
+            return None
         else:
             mejor_score = -float('inf')
             mejor_movimiento = None
@@ -90,7 +90,7 @@ class AgenteTetris:
         
     """ SIMULAR CAIDA DE LA PIEZA Y ELIMINAR LINEAS """
     def simular_caida(self, tablero_fijo, rotacion, column):
-        tablero_simulado = [fila[:] for fila in tablero_fijo]
+        tablero_simulado = tablero_fijo.copy()
         fila = 0
 
         while not self.hay_colision(

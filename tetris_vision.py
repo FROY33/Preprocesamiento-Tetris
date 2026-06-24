@@ -134,9 +134,10 @@ def pieza_cayo(pieza_activa, tablero_fijo):
 
 """ CICLO PRINCIPAL """
 cam = cv2.VideoCapture(1)
+tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
+
 # Crear clase agente
 agente = AgenteTetris()
-tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
 
 if not cam.isOpened():
     print("No se pude abrir la camara")
@@ -168,21 +169,22 @@ while True:
 
     if pieza_cayo(pieza_activa, tablero_fijo):
         tablero_fijo = matriz_estado.copy()
-        
+
         agente.pieza_fijada()
     else:
         tipo_pieza = determinar_tipo_pieza(pieza_activa)
-        print(tipo_pieza)
 
         if tipo_pieza is not None:
+            print(tipo_pieza)
 
             # obtener movimiento
             movimiento = agente.decidir_movimiento(
                 tablero_fijo,
-                tipo_pieza,
+                tipo_pieza
             )
 
-            print(movimiento)
+            if movimiento is not None:
+                print(movimiento)
     
     matriz_anterior = matriz_estado.copy()
 
