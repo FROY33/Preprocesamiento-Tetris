@@ -1,6 +1,14 @@
 import cv2
+import json
+import socket
 import numpy as np
 from agente_tetris import AgenteTetris
+
+HOST = "192.168.X.X"
+PORT = 5000
+
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect((HOST, PORT))
 
 """ CONSTANTES GLOBALES """
 PIEZAS = {
@@ -138,6 +146,7 @@ tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
 
 # Crear clase agente
 agente = AgenteTetris()
+movimiento_encontrado = False
 
 if not cam.isOpened():
     print("No se pude abrir la camara")
@@ -171,20 +180,22 @@ while True:
         tablero_fijo = matriz_estado.copy()
 
         agente.pieza_fijada()
+        movimiento_encontrado = False
     else:
         tipo_pieza = determinar_tipo_pieza(pieza_activa)
 
         if tipo_pieza is not None:
-            print(tipo_pieza)
 
-            # obtener movimiento
             movimiento = agente.decidir_movimiento(
                 tablero_fijo,
                 tipo_pieza
             )
 
             if movimiento is not None:
-                print(movimiento)
+                mensaje = json.dumps(movimiento) + "\n"
+                client.sendall(mensaje.encode())
+
+                print("Enviado:", movimiento)
     
     matriz_anterior = matriz_estado.copy()
 
