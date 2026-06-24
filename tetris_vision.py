@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from agente_tetris import AgenteTetris
 
 """ CONSTANTES GLOBALES """
 PIEZAS = {
@@ -133,8 +134,10 @@ def pieza_cayo(pieza_activa, tablero_fijo):
 
 """ CICLO PRINCIPAL """
 cam = cv2.VideoCapture(1)
-
 tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
+
+# Crear clase agente
+agente = AgenteTetris()
 
 if not cam.isOpened():
     print("No se pude abrir la camara")
@@ -166,13 +169,22 @@ while True:
 
     if pieza_cayo(pieza_activa, tablero_fijo):
         tablero_fijo = matriz_estado.copy()
-        
-        # Decirle al agente que espere una nueva pieza
+
+        agente.pieza_fijada()
     else:
-        print(determinar_tipo_pieza(pieza_activa))
-        
-        # Mandar al agente tipo de pieza y tablero fijo
-        # Si el agente recibe la misma 5 veces la selecciona
+        tipo_pieza = determinar_tipo_pieza(pieza_activa)
+
+        if tipo_pieza is not None:
+            print(tipo_pieza)
+
+            # obtener movimiento
+            movimiento = agente.decidir_movimiento(
+                tablero_fijo,
+                tipo_pieza
+            )
+
+            if movimiento is not None:
+                print(movimiento)
     
     matriz_anterior = matriz_estado.copy()
 
