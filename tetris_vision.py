@@ -177,7 +177,7 @@ while True:
     pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
     
     # Si la matriz actual tiene menos bloques que el tablero fijo, significa que se completó una línea o se reinició
-    if np.sum(matriz_estado) < np.sum(tablero_fijo) - 5: 
+    if np.sum(matriz_estado) < int(np.sum(tablero_fijo)) - 5: 
         tablero_fijo = matriz_estado.copy()
         
     if pieza_cayo(pieza_activa, tablero_fijo):
