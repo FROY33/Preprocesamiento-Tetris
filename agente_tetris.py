@@ -10,9 +10,9 @@ PIEZAS = {
     ],
     "T": [
         np.array([[1, 1, 1], [0, 1, 0]]), # Punta abajo
-        np.array([[0, 1], [1, 1], [0, 1]]), # Punta derecha
+        np.array([[1, 0], [1, 1], [1, 0]]),  # Punta izquierda
         np.array([[0, 1, 0], [1, 1, 1]]), # Punta arriba
-        np.array([[1, 0], [1, 1], [1, 0]])  # Punta izquierda
+        np.array([[0, 1], [1, 1], [0, 1]]) # Punta derecha
     ],
     "L": [
         np.array([[1, 0], [1, 0], [1, 1]]), # L normal
@@ -40,7 +40,7 @@ class AgenteTetris:
 
     """ CONSTRUCTOR """
     def __init__(self):
-        self.esperando_pieza = False
+        self.esperando_pieza = True
         self.pieza_anterior = None
         self.contador = 0
 
@@ -59,7 +59,7 @@ class AgenteTetris:
 
                 if (self.contador == 5):
                     self.esperando_pieza = False
-                    self.contador_pieza = 0
+                    self.contador = 0
             else:
                 self.pieza_anterior = tipo_pieza
 
@@ -86,7 +86,7 @@ class AgenteTetris:
                             "columna": columna
                         }
                         
-                return mejor_movimiento 
+            return mejor_movimiento 
         
     """ SIMULAR CAIDA DE LA PIEZA Y ELIMINAR LINEAS """
     def simular_caida(self, tablero_fijo, rotacion, column):
