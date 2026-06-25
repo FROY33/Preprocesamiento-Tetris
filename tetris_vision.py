@@ -176,12 +176,14 @@ while True:
 
     pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
     
-    # Si la matriz actual tiene menos bloques que el tablero fijo, significa que se completó una línea o se reinició
-    if np.sum(matriz_estado) < int(np.sum(tablero_fijo)) - 5: 
-        tablero_fijo = matriz_estado.copy()
-        
+   
     if pieza_cayo(pieza_activa, tablero_fijo):
         tablero_fijo = matriz_estado.copy()
+         # Limpiar matemáticamente las líneas completas en tablero_fijo para adelantarnos a la animación
+        filas_buenas = [i for i in range(20) if not np.all(tablero_fijo[i, :] == 1)]
+        lineas_borradas = 20 - len(filas_buenas)
+        if lineas_borradas > 0:
+            tablero_fijo = np.vstack((np.zeros((lineas_borradas, 10), dtype=np.uint8), tablero_fijo[filas_buenas]))
         agente.pieza_fijada()
         movimiento_encontrado = False
     else:        
