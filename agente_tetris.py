@@ -39,7 +39,17 @@ PIEZAS = {
 class AgenteTetris:
 
     """ CONSTRUCTOR """
-    def __init__(self):
+    def __init__(self, pesos):
+        if pesos is None:
+            self.pesos = {
+                "lineas": 10,
+                "altura": 0.5,
+                "huecos": 5,
+                "rugosidad": 0.3
+            }
+        else:
+            self.pesos = pesos
+
         self.esperando_pieza = True
         self.pieza_anterior = None
         self.contador = 0
@@ -210,6 +220,8 @@ class AgenteTetris:
         huecos = self.contar_huecos(tablero)
         rugosidad = self.rugosidad(tablero)
 
-        score = (10 * lineas_eliminadas - 0.5 * altura - 5 * huecos - 0.3 * rugosidad)
+        p = self.pesos
+
+        score = (p["lineas"] * lineas_eliminadas - p["altura"] * altura - p["huecos"] * huecos - p["rugosidad"] * rugosidad)
 
         return score

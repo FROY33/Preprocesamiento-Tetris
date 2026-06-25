@@ -175,7 +175,7 @@ while True:
         matriz_estado = matriz_umbral(tablero_umbral)
 
     pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
-    
+    print(tablero_fijo)
    
     if pieza_cayo(pieza_activa, tablero_fijo):
         tablero_fijo = matriz_estado.copy()
@@ -203,7 +203,6 @@ while True:
                 client.sendall(mensaje.encode())
 
                 print("Enviado:", movimiento)
-                print(tablero_fijo)
     
     matriz_anterior = matriz_estado.copy()
 
