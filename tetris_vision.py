@@ -148,6 +148,9 @@ tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
 agente = AgenteTetris()
 movimiento_encontrado = False
 
+frames_cayo = 0
+ultima_pieza_valida = np.zeros((20, 10), dtype=np.uint8)
+
 if not cam.isOpened():
     print("No se pude abrir la camara")
     exit()
@@ -179,11 +182,23 @@ while True:
         tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
     pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
     print(tablero_fijo)
-   
+
+    ys, xs = np.where(pieza_activa == 1)
+    
+    if len(xs) == 4:
+        ultima_pieza_valida = pieza_activa.copy()
+        
     if pieza_cayo(pieza_activa, tablero_fijo):
-        # Usamos logical_or para solo agregar los 4 bloques exactos de la pieza que cayó,
-        # evitando copiar "glitches" (celdas faltantes) de la cámara en ese instante.
-        tablero_fijo = np.logical_or(tablero_fijo, pieza_activa).astype(np.uint8)
+        frames_cayo += 1
+    else:
+        frames_cayo = 0
+    # Condición para fijar: 
+    # 1. Lleva 5 frames tocando el fondo sin moverse (superó un posible deslizamiento).
+    # 2. O tocaba el fondo y de repente apareció una nueva pieza (len(xs) > 4).
+    if frames_cayo >= 5 or (frames_cayo > 0 and len(xs) > 4):
+        # Usamos la última pieza válida conocida (exactamente 4 bloques)
+        tablero_fijo = np.logical_or(tablero_fijo, ultima_pieza_valida).astype(np.uint8)
+        
          # Limpiar matemáticamente las líneas completas en tablero_fijo para adelantarnos a la animación
         filas_buenas = [i for i in range(20) if not np.all(tablero_fijo[i, :] == 1)]
         lineas_borradas = 20 - len(filas_buenas)
@@ -191,6 +206,8 @@ while True:
             tablero_fijo = np.vstack((np.zeros((lineas_borradas, 10), dtype=np.uint8), tablero_fijo[filas_buenas]))
         agente.pieza_fijada()
         movimiento_encontrado = False
+        frames_cayo = 0
+        
     else:        
         tipo_pieza = determinar_tipo_pieza(pieza_activa)
 
