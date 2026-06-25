@@ -4,8 +4,8 @@ import socket
 import numpy as np
 from agente_tetris import AgenteTetris
 
-HOST = "192.168.X.X"
-PORT = 5000
+HOST = "192.168.1.214"
+PORT = 9999
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((HOST, PORT))
@@ -175,16 +175,16 @@ while True:
         matriz_estado = matriz_umbral(tablero_umbral)
 
     pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
-
+    
     if pieza_cayo(pieza_activa, tablero_fijo):
         tablero_fijo = matriz_estado.copy()
-
         agente.pieza_fijada()
         movimiento_encontrado = False
-    else:
+    else:        
         tipo_pieza = determinar_tipo_pieza(pieza_activa)
 
-        if tipo_pieza is not None:
+        if tipo_pieza is not None and not movimiento_encontrado:
+            print(tipo_pieza)
 
             movimiento = agente.decidir_movimiento(
                 tablero_fijo,
@@ -192,10 +192,12 @@ while True:
             )
 
             if movimiento is not None:
+                movimiento_encontrado = True
                 mensaje = json.dumps(movimiento) + "\n"
                 client.sendall(mensaje.encode())
 
                 print("Enviado:", movimiento)
+                print(tablero_fijo)
     
     matriz_anterior = matriz_estado.copy()
 

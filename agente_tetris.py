@@ -10,9 +10,9 @@ PIEZAS = {
     ],
     "T": [
         np.array([[1, 1, 1], [0, 1, 0]]), # Punta abajo
-        np.array([[0, 1], [1, 1], [0, 1]]), # Punta derecha
+        np.array([[1, 0], [1, 1], [1, 0]]),  # Punta izquierda
         np.array([[0, 1, 0], [1, 1, 1]]), # Punta arriba
-        np.array([[1, 0], [1, 1], [1, 0]])  # Punta izquierda
+        np.array([[0, 1], [1, 1], [0, 1]]) # Punta derecha
     ],
     "L": [
         np.array([[1, 0], [1, 0], [1, 1]]), # L normal
