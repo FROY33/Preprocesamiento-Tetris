@@ -174,11 +174,16 @@ while True:
     if tablero_umbral is not None:
         matriz_estado = matriz_umbral(tablero_umbral)
 
+    # Detectar reinicio del juego (si la cámara ve muchos menos bloques de los que recordamos)
+    if int(np.sum(tablero_fijo)) > int(np.sum(matriz_estado)) + 10:
+        tablero_fijo = np.zeros((20, 10), dtype=np.uint8)
     pieza_activa = np.logical_and(matriz_estado, np.logical_not(tablero_fijo)).astype(np.uint8)
     print(tablero_fijo)
    
     if pieza_cayo(pieza_activa, tablero_fijo):
-        tablero_fijo = matriz_estado.copy()
+        # Usamos logical_or para solo agregar los 4 bloques exactos de la pieza que cayó,
+        # evitando copiar "glitches" (celdas faltantes) de la cámara en ese instante.
+        tablero_fijo = np.logical_or(tablero_fijo, pieza_activa).astype(np.uint8)
          # Limpiar matemáticamente las líneas completas en tablero_fijo para adelantarnos a la animación
         filas_buenas = [i for i in range(20) if not np.all(tablero_fijo[i, :] == 1)]
         lineas_borradas = 20 - len(filas_buenas)
